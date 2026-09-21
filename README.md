@@ -17,8 +17,7 @@ The visualization is built using Plotly/Bokeh and allows users to explore the 2D
 * **Color:** Represents the scientific discipline (cluster).
 * **Hover Tooltip:** Displays the researcher's name, $x/y$ coordinates, and their top 30 most representative TF-IDF keywords.
 * **Navigation:** Fully zoomable and pannable to explore dense sub-disciplines.
-
----
+```text
 
 conicet-semantic-map/
 │
@@ -37,7 +36,7 @@ conicet-semantic-map/
 │
 └── docs/
     ├── index.html
-
+```
 
 ## 🏗️ Pipeline Architecture
 
