@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Researcher Map</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['Fraunces', 'Georgia', 'serif'],
+          sans: ['"Instrument Sans"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif']
+        },
+        colors: {
+          ink: {
+            950: '#0A101C', 900: '#0F1726', 800: '#162034', 700: '#22304A',
+            500: '#5B6B8C', 300: '#93A1BF', 100: '#E7ECF6'
+          },
+          amber: { hi: '#FFC857' }
+        }
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { background: #0A101C; color: #E7ECF6; }
+  :focus-visible { outline: 2px solid #FFC857; outline-offset: 2px; }
+  input:focus-visible { outline-offset: 0; }
+
+  .leaflet-container { background: #0A101C; font-family: inherit; outline: 0; }
+  #map canvas.layer { position: absolute; left: 0; top: 0; pointer-events: none; }
+
+  /* Thin dark scrollbars */
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: #22304A transparent; }
+  .scroll-thin::-webkit-scrollbar { width: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: #22304A; border-radius: 8px; }
+
+  /* Mobile: sidebar becomes a drawer */
+  @media (max-width: 1023px) {
+    #sidebar { position: absolute; top: 0; bottom: 0; left: 0; z-index: 1500; width: min(340px, 88vw);
+               transform: translateX(-102%); transition: transform .2s ease; box-shadow: 0 0 40px rgba(0,0,0,.5); }
+    #sidebar.open { transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #sidebar { transition: none; }
+    .spin { animation: none !important; }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.9s linear infinite; }
+
+  /* Markdown-like About page */
+  .md h1 { font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 2rem; line-height: 1.15; margin: 0 0 .75rem; }
+  .md h2 { font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 1.25rem; margin: 2rem 0 .5rem; padding-top: 1.25rem; border-top: 1px solid #22304A; }
+  .md p { color: #C4CEE3; line-height: 1.7; margin: 0 0 .75rem; }
+  .md p.lead { font-size: 1.1rem; color: #E7ECF6; }
+  .md ul { color: #C4CEE3; line-height: 1.7; padding-left: 1.25rem; list-style: disc; margin: 0 0 .75rem; }
+  .md li { margin: .2rem 0; }
+  .md code { background: #162034; border: 1px solid #22304A; padding: .05rem .35rem; border-radius: 4px; font-size: .9em; }
+  .md .ph { color: #FFC857; }
+</style>
+</head>
+
+<body class="font-sans antialiased">
+<div class="h-full flex flex-col">
+
+  <!-- ───────── Header ───────── -->
+  <header class="shrink-0 flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 lg:gap-x-5 border-b border-ink-700 bg-ink-900 px-3 sm:px-5 py-2.5">
+    <button id="btnPanel" type="button" class="lg:hidden shrink-0 rounded-md border border-ink-700 p-2 text-ink-300 hover:text-ink-100" data-i18n-title="panel" aria-controls="sidebar" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+
+    <div class="min-w-0 flex-1">
+      <h1 class="font-display text-[1.35rem] leading-tight font-semibold tracking-tight truncate" data-i18n="title">Researcher Map</h1>
+      <p class="hidden md:block text-[13px] text-ink-300 truncate" data-i18n="desc"></p>
+    </div>
+
+    <nav class="order-last sm:order-none w-full sm:w-auto sm:ml-auto flex items-center gap-1 sm:gap-3 whitespace-nowrap" aria-label="Main">
+      <button type="button" data-view="map" class="navlink px-2 py-1.5 text-sm border-b-2" data-i18n="navMap">Main Map</button>
+      <button type="button" data-view="about" class="navlink px-2 py-1.5 text-sm border-b-2" data-i18n="navAbout">About</button>
+    </nav>
+
+    <div class="shrink-0 flex rounded-md border border-ink-700 p-0.5 text-xs" role="group" data-i18n-aria="langLabel">
+      <button type="button" data-lang-btn="en" class="rounded px-2.5 py-1">English</button>
+      <button type="button" data-lang-btn="es" class="rounded px-2.5 py-1">Español</button>
+    </div>
+  </header>
+
+  <main class="flex-1 min-h-0 relative">
+
+    <!-- ───────── Map view ───────── -->
+    <section id="viewMap" class="absolute inset-0 flex">
+
+      <aside id="sidebar" class="w-[340px] shrink-0 flex flex-col border-r border-ink-700 bg-ink-900 min-h-0">
+        <div class="relative z-20 shrink-0 px-4 pt-4 pb-3 border-b border-ink-700">
+          <div class="flex items-baseline justify-between mb-2.5">
+            <h2 class="text-sm font-semibold" data-i18n="findTitle">Find researchers</h2>
+            <button id="btnClearAll" type="button" hidden class="text-xs text-ink-300 hover:text-ink-100 underline underline-offset-2" data-i18n="clearAll">Clear all</button>
+          </div>
+          <div id="bars" class="space-y-2"></div>
+          <p class="mt-3 text-xs leading-relaxed text-ink-500" data-i18n="hint"></p>
+        </div>
+
+        <div class="flex-1 min-h-0 flex flex-col px-4 pt-3">
+          <div class="flex items-baseline justify-between mb-1.5">
+            <h2 class="text-sm font-semibold" data-i18n="legendTitle">Disciplines</h2>
+            <button id="btnShowAll" type="button" class="text-xs text-ink-300 hover:text-ink-100 underline underline-offset-2" data-i18n="showAll">Show all</button>
+          </div>
+          <div id="legend" class="flex-1 min-h-0 overflow-y-auto scroll-thin -mx-2 px-2 pb-3"></div>
+        </div>
+
+        <div class="shrink-0 border-t border-ink-700 px-4 py-2.5 text-xs text-ink-300">
+          <div id="statCount"></div>
+          <div id="statSkipped" class="text-ink-500" hidden></div>
+          <div id="demoBadge" class="mt-1 text-amber-hi" hidden data-i18n="demoBadge"></div>
+        </div>
+      </aside>
+
+      <div id="mapWrap" class="relative flex-1 min-w-0">
+        <div id="map" class="absolute inset-0 z-0"></div>
+
+        <div id="tip" hidden class="pointer-events-none absolute z-[1200] max-w-[320px] rounded-lg border border-ink-700 bg-ink-900/95 px-3 py-2.5 shadow-2xl"></div>
+
+        <div class="absolute right-3 bottom-3 z-[1100] flex flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900/90 backdrop-blur">
+          <button id="zIn" type="button" class="h-9 w-9 grid place-items-center text-ink-100 hover:bg-ink-800" data-i18n-title="zoomIn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button id="zOut" type="button" class="h-9 w-9 grid place-items-center text-ink-100 hover:bg-ink-800 border-t border-ink-700" data-i18n-title="zoomOut">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+          </button>
+          <button id="zFit" type="button" class="h-9 w-9 grid place-items-center text-ink-100 hover:bg-ink-800 border-t border-ink-700" data-i18n-title="resetView">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="absolute inset-0 z-[1300] grid place-items-center bg-ink-950/80">
+          <div class="flex items-center gap-3 text-sm text-ink-300">
+            <svg class="spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55" /></svg>
+            <span data-i18n="loading">Loading researchers…</span>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div id="error" hidden class="absolute inset-0 z-[1300] grid place-items-center bg-ink-950/90 p-6">
+          <div class="max-w-md rounded-lg border border-ink-700 bg-ink-900 p-5">
+            <h3 class="font-display text-lg font-semibold" data-i18n="errTitle">Could not load the dataset</h3>
+            <p id="errMsg" class="mt-2 text-sm text-amber-hi break-words"></p>
+            <p class="mt-2 text-sm text-ink-300" data-i18n="errHint"></p>
+            <div class="mt-4 flex gap-2">
+              <button id="btnRetry" type="button" class="rounded-md bg-ink-100 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-white" data-i18n="retry">Retry</button>
+              <button id="btnDemo" type="button" class="rounded-md border border-ink-700 px-3 py-1.5 text-sm text-ink-100 hover:bg-ink-800" data-i18n="demo">Load demo data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── About view ───────── -->
+    <section id="viewAbout" hidden class="absolute inset-0 overflow-y-auto scroll-thin bg-ink-950">
+      <article class="md mx-auto max-w-[68ch] px-6 py-10 sm:py-14">
+
+        <div data-lang="en">
+          <h1>About this project</h1>
+          <p class="lead"><span class="ph">[Placeholder]</span> Replace this paragraph with a short statement of what the project is, who made it and why.</p>
+
+          <h2>What you are looking at</h2>
+          <p>Each dot is one researcher. Its position comes from the <code>x</code> and <code>y</code> values in the dataset and its color shows the discipline. <span class="ph">[Placeholder: explain how the coordinates were computed and what distance on the map means.]</span></p>
+
+          <h2>How to use the map</h2>
+          <ul>
+            <li>Scroll or pinch to zoom, drag to pan.</li>
+            <li>Hover a dot (or tap it) to see the name and top keywords.</li>
+            <li>Search up to four names. Lines connect them in the order of the search bars, and the map frames all of them.</li>
+            <li>Click a line or a selected dot to highlight it.</li>
+            <li>Click a discipline in the legend to hide or show it.</li>
+          </ul>
+
+          <h2>Data</h2>
+          <p><span class="ph">[Placeholder]</span> Data source, collection date, license, known limitations.</p>
+
+          <h2>Credits and contact</h2>
+          <p><span class="ph">[Placeholder]</span> Authors, institution, contact address, citation.</p>
+        </div>
+
+        <div data-lang="es" hidden>
+          <h1>Acerca de este proyecto</h1>
+          <p class="lead"><span class="ph">[Texto provisional]</span> Reemplaza este párrafo con una breve descripción del proyecto, quiénes lo hicieron y por qué.</p>
+
+          <h2>Qué estás viendo</h2>
+          <p>Cada punto es un investigador. Su posición proviene de los valores <code>x</code> e <code>y</code> del conjunto de datos y su color indica la disciplina. <span class="ph">[Texto provisional: explica cómo se calcularon las coordenadas y qué significa la distancia en el mapa.]</span></p>
+
+          <h2>Cómo usar el mapa</h2>
+          <ul>
+            <li>Usa la rueda o pellizca para acercar; arrastra para desplazarte.</li>
+            <li>Pasa el cursor sobre un punto (o tócalo) para ver el nombre y las palabras clave.</li>
+            <li>Busca hasta cuatro nombres. Las líneas los unen en el orden de las barras de búsqueda y el mapa encuadra a todos.</li>
+            <li>Haz clic en una línea o en un punto seleccionado para resaltarlo.</li>
+            <li>Haz clic en una disciplina de la leyenda para ocultarla o mostrarla.</li>
+          </ul>
+
+          <h2>Datos</h2>
+          <p><span class="ph">[Texto provisional]</span> Fuente de los datos, fecha de recolección, licencia, limitaciones conocidas.</p>
+
+          <h2>Créditos y contacto</h2>
+          <p><span class="ph">[Texto provisional]</span> Autores, institución, dirección de contacto, cómo citar.</p>
+        </div>
+
+      </article>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ════════════════════════════ Config ════════════════════════════ */
+// Point this at the RAW file on GitHub (raw.githubusercontent.com/...).
+// A normal github.com/.../blob/... link is converted automatically.
+// You can also override it at runtime with  ?data=<url>
+const DATA_URL = 'https://raw.githubusercontent.com/YOUR-USER/YOUR-REPO/main/researchers.json';
+
+const WORLD = 1024;        // largest data dimension, in map units
+const MAX_ZOOM = 10;
+const GRID = 256;          // spatial-index resolution (GRID x GRID cells)
+const BAR_COLORS = ['#FFC857', '#5CC8FF', '#F59CFF', '#7CF5A6'];
+const HILITE = '#FFC857';
+const SEARCH_LIMIT = 8;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ════════════════════════════ i18n ════════════════════════════ */
+const I18N = {
+  en: {
+    title: 'Researcher Map',
+    desc: 'Each dot is a researcher, colored by discipline. Search up to four names to connect them.',
+    navMap: 'Main Map', navAbout: 'About',
+    findTitle: 'Find researchers', barPh: 'Name {n}', noMatch: 'No matches',
+    clearAll: 'Clear all', clearBar: 'Clear',
+    hint: 'Lines connect the names in the order of the search bars. Click a line or a selected dot to highlight it.',
+    legendTitle: 'Disciplines', showAll: 'Show all',
+    count: '{n} researchers', skipped: 'Rows skipped: {n} (missing name or coordinates)',
+    demoBadge: 'Demo data (synthetic, not real researchers)',
+    loading: 'Loading researchers…',
+    errTitle: 'Could not load the dataset',
+    errHint: 'Set DATA_URL in the page source to the raw.githubusercontent.com link of your JSON, or open this page with ?data=<url>.',
+    errPlaceholder: 'DATA_URL has not been configured yet.',
+    retry: 'Retry', demo: 'Load demo data',
+    zoomIn: 'Zoom in', zoomOut: 'Zoom out', resetView: 'Reset view',
+    panel: 'Search and legend', langLabel: 'Language'
+  },
+  es: {
+    title: 'Mapa de investigadores',
+    desc: 'Cada punto es un investigador, coloreado por disciplina. Busca hasta cuatro nombres para unirlos.',
+    navMap: 'Mapa principal', navAbout: 'Acerca de',
+    findTitle: 'Buscar investigadores', barPh: 'Nombre {n}', noMatch: 'Sin resultados',
+    clearAll: 'Limpiar todo', clearBar: 'Borrar',
+    hint: 'Las líneas unen los nombres en el orden de las barras de búsqueda. Haz clic en una línea o en un punto seleccionado para resaltarlo.',
+    legendTitle: 'Disciplinas', showAll: 'Mostrar todo',
+    count: '{n} investigadores', skipped: 'Filas omitidas: {n} (sin nombre o coordenadas)',
+    demoBadge: 'Datos de demostración (sintéticos, no son investigadores reales)',
+    loading: 'Cargando investigadores…',
+    errTitle: 'No se pudo cargar el conjunto de datos',
+    errHint: 'Define DATA_URL en el código de la página con el enlace raw.githubusercontent.com de tu JSON, o abre esta página con ?data=<url>.',
+    errPlaceholder: 'DATA_URL todavía no está configurada.',
+    retry: 'Reintentar', demo: 'Cargar datos de demostración',
+    zoomIn: 'Acercar', zoomOut: 'Alejar', resetView: 'Restablecer vista',
+    panel: 'Búsqueda y leyenda', langLabel: 'Idioma'
+  }
+};
+
+let lang = 'en';
+try {
+  const saved = localStorage.getItem('rm-lang');
+  lang = saved === 'es' || saved === 'en' ? saved : ((navigator.language || 'en').toLowerCase().startsWith('es') ? 'es' : 'en');
+} catch (_) {
+  lang = (navigator.language || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
+}
+const t = (k, vars) => {
+  let s = I18N[lang][k] ?? k;
+  if (vars) for (const [a, b] of Object.entries(vars)) s = s.replace(`{${a}}`, b);
+  return s;
+};
+
+/* ════════════════════════════ Helpers ════════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const els = {
+  viewMap: $('viewMap'), viewAbout: $('viewAbout'), sidebar: $('sidebar'), btnPanel: $('btnPanel'),
+  bars: $('bars'), legend: $('legend'), tip: $('tip'), map: $('map'), mapWrap: $('mapWrap'),
+  loading: $('loading'), error: $('error'), errMsg: $('errMsg'),
+  statCount: $('statCount'), statSkipped: $('statSkipped'), demoBadge: $('demoBadge'),
+  clearAll: $('btnClearAll'), showAll: $('btnShowAll')
+};
+
+// Accent- and case-insensitive folding: "Íñigo  Núñez" -> "inigo nunez"
+const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+function resolveUrl(u) {
+  const m = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/.exec(u);
+  return m ? `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}` : u;
+}
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function makeColor(i) {
+  const h = (i * 137.508 + 20) % 360, s = 78, l = i % 2 ? 66 : 58;
+  return { css: `hsl(${h.toFixed(1)} ${s}% ${l}%)`, rgba: (a) => `hsla(${h.toFixed(1)}, ${s}%, ${l}%, ${a})` };
+}
+
+/* ════════════════════════════ State ════════════════════════════ */
+const S = {
+  n: 0, raw: [], names: [], norm: [],
+  lng: null, lat: null, disc: null, order: null, visible: null,
+  discs: [], skipped: 0, demo: false,
+  cellStart: null, cellItems: null,
+  bounds: null, fitZoom: 0, pendingFit: false,
+  w: 0, h: 0, dpr: 1,
+  sel: [null, null, null, null],   // researcher index per search bar
+  chain: [],                        // [{i, bar}] in bar order
+  hiDots: new Set(), hiSegs: new Set(),
+  hover: -1, tipIdx: -1, dragging: false,
+  dirtyBase: false, dirtyTop: false, raf: 0
+};
+
+/* ════════════════════════════ Map ════════════════════════════ */
+// CRS.Simple = plain Cartesian plane. lat = data y, lng = data x (y points up).
+const map = L.map(els.map, {
+  crs: L.CRS.Simple,
+  preferCanvas: true,
+  zoomControl: false, attributionControl: false,
+  minZoom: -6, maxZoom: MAX_ZOOM,
+  zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 110,
+  zoomAnimation: false, markerZoomAnimation: false, fadeAnimation: false,
+  maxBoundsViscosity: 0.7
+});
+map.setView([0, 0], 0);
+
+// Dots are drawn on our own <canvas> (tens of thousands of L.circleMarker objects would be far too heavy).
+const cvBase = document.createElement('canvas'); cvBase.className = 'layer'; cvBase.style.zIndex = 450;
+const cvTop = document.createElement('canvas'); cvTop.className = 'layer'; cvTop.style.zIndex = 460;
+els.map.appendChild(cvBase); els.map.appendChild(cvTop);
+const ctxB = cvBase.getContext('2d');
+const ctxT = cvTop.getContext('2d');
+
+function sizeCanvases() {
+  const sz = map.getSize();
+  S.w = sz.x; S.h = sz.y; S.dpr = window.devicePixelRatio || 1;
+  for (const cv of [cvBase, cvTop]) {
+    cv.width = Math.max(1, Math.round(S.w * S.dpr));
+    cv.height = Math.max(1, Math.round(S.h * S.dpr));
+    cv.style.width = S.w + 'px';
+    cv.style.height = S.h + 'px';
+  }
+  scheduleBase();
+}
+
+function view() {
+  const c = map.getCenter(), s = Math.pow(2, map.getZoom());
+  return { s, ox: S.w / 2 - c.lng * s, oy: S.h / 2 + c.lat * s };
+}
+
+function scheduleBase() { S.dirtyBase = true; kick(); }
+function scheduleTop() { S.dirtyTop = true; kick(); }
+function kick() {
+  if (S.raf) return;
+  S.raf = requestAnimationFrame(() => {
+    S.raf = 0;
+    if (S.dirtyBase) { S.dirtyBase = false; drawBase(); S.dirtyTop = true; }
+    if (S.dirtyTop) { S.dirtyTop = false; drawTop(); }
+  });
+}
+
+/* ───────── Base layer: all dots ───────── */
+const spriteCache = new Map();
+function getSprites(q) {
+  const key = q + '|' + S.dpr;
+  let arr = spriteCache.get(key);
+  if (arr) return arr;
+  if (spriteCache.size > 24) spriteCache.clear();
+  const side = Math.ceil(q * 2 * S.dpr) + 4;
+  const alpha = Math.max(0.5, Math.min(0.8, 0.85 - q * 0.1));
+  arr = S.discs.map((d) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = side;
+    const g = c.getContext('2d');
+    g.beginPath(); g.arc(side / 2, side / 2, q * S.dpr, 0, Math.PI * 2);
+    g.fillStyle = d.color.rgba(alpha); g.fill();
+    return c;
+  });
+  spriteCache.set(key, arr);
+  return arr;
+}
+
+const dotRadius = (z) => Math.min(5, Math.max(1.2, 1.5 + 0.45 * z));
+
+function drawBase() {
+  const w = S.w, h = S.h;
+  ctxB.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
+  ctxB.clearRect(0, 0, w, h);
+  if (!S.n || w < 2 || h < 2) return;
+
+  const z = map.getZoom();
+  const q = Math.round(dotRadius(z) * 4) / 4;
+  const sprites = getSprites(q);
+  const dest = sprites[0].width / S.dpr, half = dest / 2;
+  const { s, ox, oy } = view();
+  const { lng, lat, disc, order, visible } = S;
+
+  ctxB.globalAlpha = S.chain.length ? 0.45 : 1;   // dim the crowd when researchers are selected
+  const xMin = -dest, xMax = w + dest, yMin = -dest, yMax = h + dest;
+  for (let k = 0; k < order.length; k++) {
+    const i = order[k], d = disc[i];
+    if (!visible[d]) continue;
+    const x = ox + lng[i] * s; if (x < xMin || x > xMax) continue;
+    const y = oy - lat[i] * s; if (y < yMin || y > yMax) continue;
+    ctxB.drawImage(sprites[d], x - half, y - half, dest, dest);
+  }
+  ctxB.globalAlpha = 1;
+}
+
+/* ───────── Top layer: selection, lines, hover ring ───────── */
+function rrect(g, x, y, w, h, r) {
+  g.beginPath();
+  if (g.roundRect) g.roundRect(x, y, w, h, r);
+  else g.rect(x, y, w, h);
+}
+
+function drawLabel(g, text, x, y, bold) {
+  g.font = `${bold ? 700 : 500} 12px "Instrument Sans", system-ui, sans-serif`;
+  const tw = g.measureText(text).width, padX = 7, hgt = 20;
+  let lx = x + 13;
+  if (lx + tw + padX * 2 > S.w - 4) lx = x - 13 - tw - padX * 2;
+  rrect(g, lx, y - hgt / 2, tw + padX * 2, hgt, 5);
+  g.fillStyle = 'rgba(10,16,28,0.88)'; g.fill();
+  g.lineWidth = 1; g.strokeStyle = bold ? HILITE : 'rgba(147,161,191,0.35)'; g.stroke();
+  g.fillStyle = '#E7ECF6'; g.textBaseline = 'middle';
+  g.fillText(text, lx + padX, y + 0.5);
+}
+
+const segKey = (a, b) => `${a}-${b}`;
+
+function drawTop() {
+  const w = S.w, h = S.h, g = ctxT;
+  g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  if (!S.n || w < 2) return;
+
+  const v = view();
+  const X = (i) => v.ox + S.lng[i] * v.s, Y = (i) => v.oy - S.lat[i] * v.s;
+  const chain = S.chain;
+
+  // Lines
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let k = 0; k < chain.length - 1; k++) {
+    const a = chain[k].i, b = chain[k + 1].i;
+    const hi = S.hiSegs.has(segKey(a, b));
+    g.beginPath(); g.moveTo(X(a), Y(a)); g.lineTo(X(b), Y(b));
+    g.strokeStyle = 'rgba(6,10,18,0.7)'; g.lineWidth = hi ? 8 : 4; g.stroke();
+    g.strokeStyle = hi ? HILITE : 'rgba(231,236,246,0.75)'; g.lineWidth = hi ? 4 : 1.6; g.stroke();
+  }
+
+  // Hovered (non-selected) dot
+  if (S.hover >= 0 && !chain.some((c) => c.i === S.hover)) {
+    const x = X(S.hover), y = Y(S.hover), r = dotRadius(map.getZoom());
+    g.beginPath(); g.arc(x, y, r + 1, 0, Math.PI * 2);
+    g.fillStyle = S.discs[S.disc[S.hover]].color.css; g.fill();
+    g.beginPath(); g.arc(x, y, r + 4, 0, Math.PI * 2);
+    g.lineWidth = 1.5; g.strokeStyle = 'rgba(255,255,255,0.9)'; g.stroke();
+  }
+
+  // Selected dots + labels
+  for (const { i, bar } of chain) {
+    const hi = S.hiDots.has(i), x = X(i), y = Y(i), R = hi ? 9 : 6.5;
+    g.save();
+    if (hi) { g.shadowColor = HILITE; g.shadowBlur = 18; }
+    g.beginPath(); g.arc(x, y, R, 0, Math.PI * 2);
+    g.fillStyle = BAR_COLORS[bar]; g.fill();
+    g.lineWidth = hi ? 3 : 2; g.strokeStyle = hi ? HILITE : '#fff'; g.stroke();
+    g.restore();
+    g.beginPath(); g.arc(x, y, R * 0.42, 0, Math.PI * 2);
+    g.fillStyle = S.discs[S.disc[i]].color.css; g.fill();
+    g.lineWidth = 1; g.strokeStyle = 'rgba(6,10,18,0.6)'; g.stroke();
+  }
+  for (const { i } of chain) drawLabel(g, S.names[i], X(i), Y(i) - 16, S.hiDots.has(i));
+}
+
+/* ───────── Spatial index + hit-testing ───────── */
+function buildGrid() {
+  const n = S.n, cs = WORLD / GRID, cells = GRID * GRID;
+  const cellOf = new Int32Array(n), start = new Int32Array(cells + 1);
+  for (let i = 0; i < n; i++) {
+    const cx = Math.min(GRID - 1, (S.lng[i] / cs) | 0), cy = Math.min(GRID - 1, (S.lat[i] / cs) | 0);
+    const c = cy * GRID + cx; cellOf[i] = c; start[c + 1]++;
+  }
+  for (let c = 0; c < cells; c++) start[c + 1] += start[c];
+  const fill = start.slice(0, cells), items = new Int32Array(n);
+  for (let i = 0; i < n; i++) items[fill[cellOf[i]]++] = i;
+  S.cellStart = start; S.cellItems = items;
+}
+
+function pickPoint(px, py) {
+  if (!S.n) return -1;
+  const v = view();
+  const dLng = (px - v.ox) / v.s, dLat = (v.oy - py) / v.s;
+  const hitPx = Math.max(6, dotRadius(map.getZoom()) + 3);
+  const rad = hitPx / v.s, cs = WORLD / GRID;
+  const x0 = Math.max(0, Math.floor((dLng - rad) / cs)), x1 = Math.min(GRID - 1, Math.floor((dLng + rad) / cs));
+  const y0 = Math.max(0, Math.floor((dLat - rad) / cs)), y1 = Math.min(GRID - 1, Math.floor((dLat + rad) / cs));
+  let best = -1, bestD = rad * rad;
+  for (let cy = y0; cy <= y1; cy++) {
+    for (let cx = x0; cx <= x1; cx++) {
+      const c = cy * GRID + cx;
+      for (let k = S.cellStart[c]; k < S.cellStart[c + 1]; k++) {
+        const i = S.cellItems[k];
+        if (!S.visible[S.disc[i]]) continue;
+        const dx = S.lng[i] - dLng, dy = S.lat[i] - dLat, d2 = dx * dx + dy * dy;
+        if (d2 <= bestD) { bestD = d2; best = i; }
+      }
+    }
+  }
+  return best;
+}
+
+function distSeg(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+function hitSelectedDot(px, py) {
+  const v = view();
+  let best = -1, bestD = 12;
+  for (const { i } of S.chain) {
+    const d = Math.hypot(px - (v.ox + S.lng[i] * v.s), py - (v.oy - S.lat[i] * v.s));
+    if (d <= bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+function hitSegment(px, py) {
+  const v = view();
+  let best = null, bestD = 7;
+  for (let k = 0; k < S.chain.length - 1; k++) {
+    const a = S.chain[k].i, b = S.chain[k + 1].i;
+    const d = distSeg(px, py, v.ox + S.lng[a] * v.s, v.oy - S.lat[a] * v.s, v.ox + S.lng[b] * v.s, v.oy - S.lat[b] * v.s);
+    if (d <= bestD) { bestD = d; best = segKey(a, b); }
+  }
+  return best;
+}
+
+/* ───────── Tooltip ───────── */
+function buildTip(i) {
+  const o = S.raw[i], d = S.discs[S.disc[i]];
+  const box = els.tip; box.replaceChildren();
+
+  const nm = document.createElement('div');
+  nm.className = 'text-sm font-semibold leading-snug'; nm.textContent = S.names[i];
+  box.appendChild(nm);
+
+  const dr = document.createElement('div');
+  dr.className = 'mt-0.5 flex items-center gap-1.5 text-xs text-ink-300';
+  const sw = document.createElement('span');
+  sw.className = 'inline-block h-2 w-2 rounded-full shrink-0'; sw.style.background = d.color.css;
+  const dl = document.createElement('span'); dl.textContent = lang === 'es' ? d.sp : d.en;
+  dr.append(sw, dl); box.appendChild(dr);
+
+  const kws = String(o.top_keywords ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 10);
+  if (kws.length) {
+    const wrap = document.createElement('div'); wrap.className = 'mt-2 flex flex-wrap gap-1';
+    for (const k of kws) {
+      const c = document.createElement('span');
+      c.className = 'rounded-full border border-ink-700 bg-ink-800 px-2 py-0.5 text-[11px] leading-tight text-ink-100';
+      c.textContent = k; wrap.appendChild(c);
+    }
+    box.appendChild(wrap);
+  }
+}
+
+function showTip(i, px, py) {
+  if (S.tipIdx !== i) { buildTip(i); S.tipIdx = i; }
+  els.tip.hidden = false;
+  const tw = els.tip.offsetWidth, th = els.tip.offsetHeight;
+  let x = px + 16, y = py + 16;
+  if (x + tw > S.w - 8) x = px - tw - 16;
+  if (y + th > S.h - 8) y = py - th - 16;
+  els.tip.style.left = Math.max(8, x) + 'px';
+  els.tip.style.top = Math.max(8, y) + 'px';
+}
+function hideTip() { els.tip.hidden = true; S.tipIdx = -1; }
+
+/* ───────── Pointer interaction ───────── */
+let pendingPt = null, hoverRaf = 0;
+
+function processHover() {
+  hoverRaf = 0;
+  const pt = pendingPt; pendingPt = null;
+  if (!pt || S.dragging || !S.n) return;
+  const dot = pickPoint(pt.x, pt.y);
+  const overSel = hitSelectedDot(pt.x, pt.y) !== -1 || hitSegment(pt.x, pt.y) !== null;
+  els.map.style.cursor = (dot !== -1 || overSel) ? 'pointer' : '';
+  if (dot !== S.hover) { S.hover = dot; scheduleTop(); }
+  if (dot !== -1) showTip(dot, pt.x, pt.y); else hideTip();
+}
+
+map.on('mousemove', (e) => {
+  pendingPt = e.containerPoint;
+  if (!hoverRaf) hoverRaf = requestAnimationFrame(processHover);
+});
+map.on('mouseout', () => { pendingPt = null; hideTip(); els.map.style.cursor = ''; if (S.hover !== -1) { S.hover = -1; scheduleTop(); } });
+map.on('dragstart', () => { S.dragging = true; hideTip(); els.map.style.cursor = ''; if (S.hover !== -1) { S.hover = -1; scheduleTop(); } });
+map.on('dragend', () => { S.dragging = false; });
+map.on('movestart zoomstart', () => { hideTip(); });
+map.on('move zoom resize viewreset', scheduleBase);
+
+map.on('click', (e) => {
+  closeDrawer();
+  const p = e.containerPoint;
+  const sd = hitSelectedDot(p.x, p.y);
+  if (sd !== -1) { toggleSet(S.hiDots, sd); scheduleTop(); return; }
+  const sg = hitSegment(p.x, p.y);
+  if (sg !== null) { toggleSet(S.hiSegs, sg); scheduleTop(); return; }
+  // Tap support: show the tooltip for the dot under the finger
+  const dot = pickPoint(p.x, p.y);
+  if (dot !== -1) { S.hover = dot; showTip(dot, p.x, p.y); scheduleTop(); }
+});
+const toggleSet = (set, v) => (set.has(v) ? set.delete(v) : set.add(v));
+
+/* ═══════════════════════ Data ingestion ═══════════════════════ */
+function ingest(arr, { demo = false } = {}) {
+  const raw = [], xs = [], ys = [], dkeys = [];
+  const discMap = new Map();
+  let skipped = 0, minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+  for (let k = 0; k < arr.length; k++) {
+    const o = arr[k];
+    if (!o || typeof o !== 'object') { skipped++; continue; }
+    const x = parseFloat(o.x), y = parseFloat(o.y), name = String(o.name ?? '').trim();
+    if (!name || !Number.isFinite(x) || !Number.isFinite(y)) { skipped++; continue; }
+    const en = String(o.discipline_en ?? '').trim(), sp = String(o.discipline_sp ?? '').trim();
+    const key = en || sp || 'Unknown';
+    let rec = discMap.get(key);
+    if (!rec) { rec = { key, en: en || sp || 'Unknown', sp: sp || en || 'Desconocida', count: 0 }; discMap.set(key, rec); }
+    rec.count++;
+    raw.push(o); xs.push(x); ys.push(y); dkeys.push(key);
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  if (!raw.length) throw new Error('No valid researcher rows found (each needs name, x, y).');
+
+  const n = raw.length;
+  const discs = [...discMap.values()].sort((a, b) => b.count - a.count);
+  discs.forEach((d, i) => { d.idx = i; d.color = makeColor(i); d.visible = true; });
+  const idxOf = new Map(discs.map((d) => [d.key, d.idx]));
+
+  const span = Math.max(maxX - minX, maxY - minY) || 1, k = WORLD / span;
+  const lng = new Float32Array(n), lat = new Float32Array(n), disc = new Uint16Array(n);
+  const names = new Array(n), norm = new Array(n);
+  for (let i = 0; i < n; i++) {
+    lng[i] = (xs[i] - minX) * k; lat[i] = (ys[i] - minY) * k;
+    disc[i] = idxOf.get(dkeys[i]);
+    names[i] = String(raw[i].name).trim(); norm[i] = fold(names[i]);
+  }
+
+  // Random (seeded) draw order so no discipline is systematically painted on top
+  const order = new Uint32Array(n); for (let i = 0; i < n; i++) order[i] = i;
+  const rnd = mulberry32(12345);
+  for (let i = n - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; const tmp = order[i]; order[i] = order[j]; order[j] = tmp; }
+
+  Object.assign(S, {
+    n, raw, names, norm, lng, lat, disc, order, discs, skipped, demo,
+    visible: new Uint8Array(discs.length).fill(1),
+    bounds: L.latLngBounds([0, 0], [(maxY - minY) * k, (maxX - minX) * k]),
+    sel: [null, null, null, null], chain: [], hover: -1
+  });
+  S.hiDots.clear(); S.hiSegs.clear();
+  spriteCache.clear();
+  buildGrid();
+  renderLegend(); renderStats(); syncBars();
+  els.demoBadge.hidden = !demo;
+  els.loading.hidden = true; els.error.hidden = true;
+  S.pendingFit = true;
+  if (!els.viewMap.hidden) doInitialFit();
+}
+
+function doInitialFit() {
+  if (!S.n) return;
+  map.invalidateSize();
+  sizeCanvases();
+  if (S.w < 10) { S.pendingFit = true; return; }
+  S.pendingFit = false;
+  map.setMinZoom(-6);
+  map.setMaxBounds(null);
+  map.fitBounds(S.bounds, { padding: [24, 24], animate: false });
+  S.fitZoom = map.getZoom();
+  map.setMinZoom(S.fitZoom - 2);
+  map.setMaxBounds(S.bounds.pad(0.4));
+  scheduleBase();
+}
+
+async function loadRemote() {
+  els.error.hidden = true; els.loading.hidden = false;
+  try {
+    const url = resolveUrl(new URLSearchParams(location.search).get('data') || DATA_URL);
+    if (/YOUR-USER/.test(url)) throw new Error(t('errPlaceholder'));
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} — ${url}`);
+    const json = await res.json();
+    if (!Array.isArray(json)) throw new Error('The JSON root must be an array of researcher objects.');
+    ingest(json);
+  } catch (err) {
+    console.error(err);
+    els.loading.hidden = true;
+    els.errMsg.textContent = String(err && err.message || err);
+    els.error.hidden = false;
+  }
+}
+
+function makeDemoData(n = 30000) {
+  const rnd = mulberry32(7);
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-9)) * Math.cos(2 * Math.PI * rnd());
+  const D = [
+    ['Physics, Chemistry & Astronomy', 'Física, química y astronomía', ['quantum optics', 'astrophysics', 'spectroscopy', 'catalysis', 'cosmology', 'condensed matter']],
+    ['Life Sciences', 'Ciencias de la vida', ['genomics', 'ecology', 'cell biology', 'evolution', 'microbiology', 'neuroscience']],
+    ['Engineering', 'Ingeniería', ['robotics', 'materials', 'control systems', 'structures', 'energy storage', 'signal processing']],
+    ['Mathematics & Computer Science', 'Matemáticas e informática', ['algebra', 'machine learning', 'optimization', 'cryptography', 'graph theory', 'statistics']],
+    ['Social Sciences', 'Ciencias sociales', ['economics', 'sociology', 'public policy', 'education', 'demography', 'political science']],
+    ['Humanities', 'Humanidades', ['philosophy', 'linguistics', 'history', 'literature', 'ethics', 'archaeology']],
+    ['Medicine & Health', 'Medicina y salud', ['oncology', 'epidemiology', 'immunology', 'cardiology', 'public health', 'pharmacology']],
+    ['Earth & Environmental Sciences', 'Ciencias de la Tierra y del ambiente', ['climate', 'geology', 'oceanography', 'hydrology', 'remote sensing', 'soil science']]
+  ];
+  const first = ['José', 'María', 'Inés', 'Andrés', 'Martín', 'Lucía', 'Sofía', 'Álvaro', 'Nicolás', 'Valentina', 'Jorge', 'Camila', 'Emilio', 'Renata', 'Tomás', 'Julieta', 'Íñigo', 'Ángela', 'Mateo', 'Paula'];
+  const last = ['García', 'Rodríguez', 'Fernández', 'Pérez', 'González', 'López', 'Martínez', 'Sánchez', 'Gómez', 'Díaz', 'Núñez', 'Muñoz', 'Álvarez', 'Romero', 'Suárez', 'Ibáñez', 'Vázquez', 'Benítez', 'Castro', 'Molina'];
+  const centers = D.map((_, i) => {
+    const a = (i / D.length) * Math.PI * 2 + 0.3 * gauss();
+    return { x: 6 * Math.cos(a) + gauss() * 0.6, y: 6 * Math.sin(a) + gauss() * 0.6, sx: 1.1 + rnd() * 1.4, sy: 1.1 + rnd() * 1.4, w: 0.6 + rnd() };
+  });
+  const totalW = centers.reduce((s, c) => s + c.w, 0);
+  const pick = (a) => a[(rnd() * a.length) | 0];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let r = rnd() * totalW, di = 0;
+    while (di < centers.length - 1 && r > centers[di].w) { r -= centers[di].w; di++; }
+    const c = centers[di], d = D[di];
+    const kw = new Set(); while (kw.size < 3) kw.add(pick(d[2]));
+    out.push({
+      name: `${pick(first)} ${pick(last)}${rnd() < 0.5 ? ' ' + pick(last) : ''}`,
+      top_keywords: [...kw].join(', '),
+      x: +(c.x + gauss() * c.sx).toFixed(6), y: +(c.y + gauss() * c.sy).toFixed(6),
+      discipline_en: d[0], discipline_sp: d[1]
+    });
+  }
+  return out;
+}
+
+/* ═══════════════════════ Legend & stats ═══════════════════════ */
+function renderLegend() {
+  els.legend.replaceChildren();
+  for (const d of S.discs) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-ink-800';
+    const sw = document.createElement('span'); sw.className = 'h-2.5 w-2.5 shrink-0 rounded-full border';
+    const lb = document.createElement('span'); lb.className = 'min-w-0 flex-1 leading-snug';
+    const ct = document.createElement('span'); ct.className = 'shrink-0 text-xs tabular-nums text-ink-500';
+    ct.textContent = d.count.toLocaleString(lang);
+    b.append(sw, lb, ct);
+    d.el = { b, sw, lb };
+    b.addEventListener('click', () => {
+      d.visible = !d.visible; S.visible[d.idx] = d.visible ? 1 : 0;
+      paintLegendItem(d); hideTip(); S.hover = -1; scheduleBase();
+    });
+    paintLegendItem(d);
+    els.legend.appendChild(b);
+  }
+}
+function paintLegendItem(d) {
+  d.el.lb.textContent = lang === 'es' ? d.sp : d.en;
+  d.el.sw.style.background = d.visible ? d.color.css : 'transparent';
+  d.el.sw.style.borderColor = d.color.css;
+  d.el.b.style.opacity = d.visible ? 1 : 0.45;
+  d.el.b.setAttribute('aria-pressed', String(d.visible));
+}
+function renderStats() {
+  els.statCount.textContent = t('count', { n: S.n.toLocaleString(lang) });
+  els.statSkipped.hidden = !S.skipped;
+  if (S.skipped) els.statSkipped.textContent = t('skipped', { n: S.skipped.toLocaleString(lang) });
+}
+els.showAll.addEventListener('click', () => {
+  for (const d of S.discs) { d.visible = true; S.visible[d.idx] = 1; paintLegendItem(d); }
+  scheduleBase();
+});
+
+/* ═══════════════════════ Search bars ═══════════════════════ */
+function searchNames(q) {
+  const nq = fold(q);
+  if (!nq || !S.n) return [];
+  const toks = nq.split(' '), taken = new Set(S.sel.filter((v) => v !== null));
+  const a = [], b = [], c = [];
+  for (let i = 0; i < S.n; i++) {
+    const nm = S.norm[i];
+    let ok = true;
+    for (let k = 0; k < toks.length; k++) if (!nm.includes(toks[k])) { ok = false; break; }
+    if (!ok || taken.has(i)) continue;
+    if (nm.startsWith(nq)) { a.push(i); if (a.length >= SEARCH_LIMIT) break; }
+    else if (nm.includes(' ' + nq)) { if (b.length < SEARCH_LIMIT) b.push(i); }
+    else if (c.length < SEARCH_LIMIT) c.push(i);
+  }
+  return a.concat(b, c).slice(0, SEARCH_LIMIT);
+}
+
+const bars = [];
+function makeBar(b) {
+  const wrap = document.createElement('div'); wrap.className = 'relative';
+  const dot = document.createElement('span');
+  dot.className = 'pointer-events-none absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2';
+  dot.style.borderColor = BAR_COLORS[b];
+  const input = document.createElement('input');
+  input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
+  input.setAttribute('role', 'combobox'); input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-expanded', 'false'); input.setAttribute('aria-controls', `sug-${b}`);
+  input.className = 'w-full rounded-md border border-ink-700 bg-ink-800 py-2 pl-8 pr-8 text-sm text-ink-100 placeholder:text-ink-500 focus:border-ink-300';
+  const clr = document.createElement('button');
+  clr.type = 'button'; clr.hidden = true;
+  clr.className = 'absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-ink-300 hover:text-ink-100';
+  clr.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const list = document.createElement('ul');
+  list.id = `sug-${b}`; list.hidden = true; list.setAttribute('role', 'listbox');
+  list.className = 'scroll-thin absolute left-0 right-0 top-full z-[2000] mt-1 max-h-64 overflow-y-auto rounded-md border border-ink-700 bg-ink-800 py-1 shadow-2xl';
+  wrap.append(dot, input, clr, list);
+  els.bars.appendChild(wrap);
+
+  const st = { b, wrap, dot, input, clr, list, items: [], active: -1 };
+  bars.push(st);
+
+  const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); st.active = -1; };
+  const paintActive = () => {
+    [...list.children].forEach((li, k) => {
+      li.style.background = k === st.active ? '#22304A' : '';
+      li.setAttribute('aria-selected', String(k === st.active));
+    });
+    const el = list.children[st.active]; if (el) el.scrollIntoView({ block: 'nearest' });
+  };
+  const open = () => {
+    list.replaceChildren();
+    st.active = -1;
+    const q = input.value;
+    if (!fold(q)) { close(); return; }
+    st.items = searchNames(q);
+    if (!st.items.length) {
+      const li = document.createElement('li');
+      li.className = 'px-3 py-2 text-sm text-ink-500'; li.textContent = t('noMatch');
+      list.appendChild(li);
+    }
+    st.items.forEach((idx, k) => {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option'); li.className = 'cursor-pointer px-3 py-1.5';
+      const n1 = document.createElement('div'); n1.className = 'text-sm text-ink-100'; n1.textContent = S.names[idx];
+      const d = S.discs[S.disc[idx]];
+      const row = document.createElement('div'); row.className = 'flex items-center gap-1.5 text-xs text-ink-300';
+      const sw = document.createElement('span'); sw.className = 'h-2 w-2 shrink-0 rounded-full'; sw.style.background = d.color.css;
+      const tx = document.createElement('span'); tx.className = 'truncate'; tx.textContent = lang === 'es' ? d.sp : d.en;
+      row.append(sw, tx); li.append(n1, row);
+      li.addEventListener('pointerdown', (e) => { e.preventDefault(); choose(b, idx); });
+      li.addEventListener('pointermove', () => { if (st.active !== k) { st.active = k; paintActive(); } });
+      list.appendChild(li);
+    });
+    list.hidden = false; input.setAttribute('aria-expanded', 'true');
+  };
+  st.open = open; st.close = close;
+
+  input.addEventListener('input', () => {
+    if (S.sel[b] !== null) { S.sel[b] = null; commitSelection(false); }   // editing text un-selects
+    clr.hidden = !input.value;
+    dot.style.background = 'transparent';
+    open();
+  });
+  input.addEventListener('focus', () => { if (S.sel[b] === null && input.value) open(); });
+  input.addEventListener('blur', close);
+  input.addEventListener('keydown', (e) => {
+    if (list.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); st.active = Math.min(st.items.length - 1, st.active + 1); paintActive(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); st.active = Math.max(0, st.active - 1); paintActive(); }
+    else if (e.key === 'Enter') { e.preventDefault(); const idx = st.items[Math.max(0, st.active)]; if (idx !== undefined) choose(b, idx); }
+    else if (e.key === 'Escape') { close(); }
+  });
+  clr.addEventListener('click', () => { S.sel[b] = null; input.value = ''; clr.hidden = true; dot.style.background = 'transparent'; close(); commitSelection(true); input.focus(); });
+}
+
+function choose(b, idx) {
+  const st = bars[b];
+  S.sel[b] = idx;
+  st.input.value = S.names[idx];
+  st.clr.hidden = false;
+  st.dot.style.background = BAR_COLORS[b];
+  st.close(); st.input.blur();
+  commitSelection(true);
+}
+
+function syncBars() {   // after new data: reset all bars
+  for (const st of bars) { st.input.value = ''; st.clr.hidden = true; st.dot.style.background = 'transparent'; st.close(); }
+  commitSelection(false);
+}
+
+function commitSelection(fit) {
+  S.chain = [];
+  S.sel.forEach((idx, bar) => { if (idx !== null) S.chain.push({ i: idx, bar }); });
+  const dots = new Set(S.chain.map((c) => c.i)), segs = new Set();
+  for (let k = 0; k < S.chain.length - 1; k++) segs.add(segKey(S.chain[k].i, S.chain[k + 1].i));
+  for (const v of [...S.hiDots]) if (!dots.has(v)) S.hiDots.delete(v);
+  for (const v of [...S.hiSegs]) if (!segs.has(v)) S.hiSegs.delete(v);
+  els.clearAll.hidden = !S.chain.length;
+  hideTip();
+  scheduleBase();
+  if (fit) fitSelection();
+}
+
+function fitSelection() {
+  const pts = S.chain.map((c) => [S.lat[c.i], S.lng[c.i]]);
+  if (!pts.length || S.w < 10) return;
+  const closeZoom = Math.min(MAX_ZOOM, S.fitZoom + 3.5);     // "close enough to tell dots apart"
+  const opts = { animate: !reduceMotion, duration: 0.7 };
+  if (pts.length === 1) {
+    map.flyTo(pts[0], closeZoom, opts);
+  } else {
+    map.flyToBounds(L.latLngBounds(pts), { ...opts, padding: [90, 90], maxZoom: Math.min(MAX_ZOOM, S.fitZoom + 4.5) });
+  }
+}
+
+els.clearAll.addEventListener('click', () => {
+  S.sel = [null, null, null, null];
+  for (const st of bars) { st.input.value = ''; st.clr.hidden = true; st.dot.style.background = 'transparent'; st.close(); }
+  commitSelection(false);
+});
+
+/* ═══════════════════════ Language ═══════════════════════ */
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => { const s = t(el.dataset.i18nTitle); el.title = s; el.setAttribute('aria-label', s); });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
+  document.querySelectorAll('[data-lang]').forEach((el) => { el.hidden = el.dataset.lang !== lang; });
+  document.querySelectorAll('[data-lang-btn]').forEach((el) => {
+    const on = el.dataset.langBtn === lang;
+    el.setAttribute('aria-pressed', String(on));
+    el.style.background = on ? '#E7ECF6' : 'transparent';
+    el.style.color = on ? '#0A101C' : '#93A1BF';
+    el.style.fontWeight = on ? 600 : 500;
+  });
+  bars.forEach((st, b) => {
+    st.input.placeholder = t('barPh', { n: b + 1 });
+    st.clr.title = t('clearBar'); st.clr.setAttribute('aria-label', t('clearBar'));
+    if (!st.list.hidden) st.open();
+  });
+  S.discs.forEach((d) => { paintLegendItem(d); d.el.b.lastChild.textContent = d.count.toLocaleString(lang); });
+  if (S.n) renderStats();
+  hideTip();
+}
+document.querySelectorAll('[data-lang-btn]').forEach((btn) => btn.addEventListener('click', () => {
+  lang = btn.dataset.langBtn;
+  try { localStorage.setItem('rm-lang', lang); } catch (_) { /* storage may be unavailable */ }
+  applyLang();
+}));
+
+/* ═══════════════════════ Navigation ═══════════════════════ */
+function showView(v) {
+  const isMap = v === 'map';
+  els.viewMap.hidden = !isMap;
+  els.viewAbout.hidden = isMap;
+  document.querySelectorAll('.navlink').forEach((b) => {
+    const on = b.dataset.view === v;
+    b.style.borderColor = on ? HILITE : 'transparent';
+    b.style.color = on ? '#E7ECF6' : '#93A1BF';
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  if (isMap) {
+    // Data stays in memory; we only need to re-measure the container and redraw.
+    if (S.pendingFit) doInitialFit();
+    else { map.invalidateSize(); sizeCanvases(); }
+  } else {
+    hideTip(); closeDrawer();
+  }
+}
+document.querySelectorAll('.navlink').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));
+
+function closeDrawer() { els.sidebar.classList.remove('open'); els.btnPanel.setAttribute('aria-expanded', 'false'); }
+els.btnPanel.addEventListener('click', () => {
+  const open = els.sidebar.classList.toggle('open');
+  els.btnPanel.setAttribute('aria-expanded', String(open));
+});
+
+/* ═══════════════════════ Controls & lifecycle ═══════════════════════ */
+$('zIn').addEventListener('click', () => map.zoomIn());
+$('zOut').addEventListener('click', () => map.zoomOut());
+$('zFit').addEventListener('click', () => {
+  if (!S.n) return;
+  map.flyToBounds(S.bounds, { padding: [24, 24], animate: !reduceMotion, duration: 0.6 });
+});
+$('btnRetry').addEventListener('click', loadRemote);
+$('btnDemo').addEventListener('click', () => { els.error.hidden = true; ingest(makeDemoData(), { demo: true }); });
+
+new ResizeObserver(() => {
+  if (els.map.clientWidth < 2 || els.map.clientHeight < 2) return;   // hidden (About view)
+  map.invalidateSize();
+  sizeCanvases();
+}).observe(els.map);
+
+for (let b = 0; b < 4; b++) makeBar(b);
+applyLang();
+showView('map');
+sizeCanvases();
+loadRemote();
+
+})();
+</script>
+</body>
+</html>
