@@ -170,6 +170,7 @@
     <!-- ───────── About view ───────── -->
     <section id="viewAbout" hidden class="absolute inset-0 overflow-y-auto scroll-thin bg-ink-950">
       <article class="md mx-auto max-w-[68ch] px-6 py-10 sm:py-14">
+
         
 <div data-lang="en">
           <h2>What you are looking at</h2>
@@ -283,6 +284,45 @@ const GRID = 256;          // spatial-index resolution (GRID x GRID cells)
 const BAR_COLORS = ['#FFC857', '#5CC8FF', '#F59CFF', '#7CF5A6'];
 const HILITE = '#FFC857';
 const SEARCH_LIMIT = 8;
+
+// ── Floating map text ──────────────────────────────────────────────
+// x / y use the SAME coordinates as your dataset. size = font size in px at the full-map view
+// (it grows/shrinks gently with zoom). text can be a string or { en: '…', es: '…' }.
+// Leave the array empty to get randomly placed EXAMPLE labels.
+const LABEL_COLOR = 'rgba(138,148,166,0.85)';   // medium gray
+const MAP_LABELS = [
+{ text: { en: 'Archeology', es: 'Arqueología' }, x: 3.076, y: 7.732, size: 18 },
+{ text: { en: 'Astronomy', es: 'Astronomía' }, x: -7.82, y: 1.70, size: 18 },
+{ text: { en: 'Analytic philosophy', es: 'Filosofía analítica' }, x: -1.65, y: 8.45, size: 6 },
+{ text: { en: 'Continental philosophy', es: 'Filosofía continental' }, x: -1.31, y: 8.74, size: 8 },
+{ text: { en: 'Ancient philosophy', es: 'Filosofía antigua' }, x: -1.39, y: 9.09, size: 4 },
+{ text: { en: 'Linguistics', es: 'Lingüística' }, x: -2.22, y: 7.37, size: 4 },
+{ text: { en: 'Classical Studies', es: 'Letras clásicas' }, x: -1.076, y: 9.33, size: 4 },
+{ text: { en: 'Literature', es: 'Letras modernas' }, x: -0.455, y: 9.077, size: 10 },
+{ text: { en: 'Urban Studies', es: 'Estudios Urbanos' }, x: 1.21, y: 6.92, size: 6 },
+{ text: { en: 'Education', es: 'Educación' }, x: -2.19, y: 6.49, size: 8 },
+{ text: { en: 'History', es: 'Historia' }, x: -0.02, y: 7.95, size: 12 },
+{ text: { en: 'Social psychology', es: 'Psicología social' }, x: -1.516, y: 6.00, size: 4 },
+{ text: { en: 'Psychology', es: 'Psicología' }, x: -2.08, y: 5.41, size: 9 },
+{ text: { en: 'Economy', es: 'Economía' }, x: 0.13, y: 6.26, size: 12 },
+{ text: { en: 'Tourism', es: 'Turismo' }, x: 1.629, y: 7.20, size: 4 },
+{ text: { en: 'Geology', es: 'Geología' }, x: 5.5, y: 6.45, size: 18 },
+{ text: { en: 'Paleobotany', es: 'Paleobotánica' }, x: 6.16, y: 5.3, size: 9 },
+{ text: { en: 'Paleontology', es: 'Paleontología' }, x: 6.54, y: 4.67, size: 13 },
+{ text: { en: 'Math', es: 'Matemática' }, x: -6.09, y: 2.96, size: 19 },
+{ text: { en: 'Oncology', es: 'Oncología' }, x: -1.15, y: -1.96, size: 19 },
+{ text: { en: 'Neurobiology ', es: 'Neurobiología' }, x: -1.39, y: -0.01, size: 17 },
+{ text: { en: 'Botany', es: 'Biología vegetal' }, x: 4.8, y: 1.9, size: 19 },
+{ text: { en: 'Entomology', es: 'Entomología' }, x: 5.48, y: 1.02, size: 15 },
+{ text: { en: 'Food science', es: 'Ciencia de alimentos' }, x: 1.12, y: 1.102, size: 15 },
+{ text: { en: 'Atmospheric chemistry', es: 'Química Atmosférica' }, x: -4.3, y: -1.55, size: 7 },
+{ text: { en: 'Chemical engineering', es: 'Ingeniería química' }, x: -4.77, y: -1.14, size: 12 },
+{ text: { en: 'Materials chemistry', es: 'Química materiales' }, x: -4.95, y: -0.57, size: 12 },
+{ text: { en: 'Analytical chemistry', es: 'Química analítica' }, x: -3.28, y: -0.54, size: 10 },
+{ text: { en: 'Pollutants', es: 'Contaminantes' }, x: 2.82, y: 3.145, size: 10 },
+{ text: { en: 'Climate', es: 'Climatología' }, x: 3.47, y: 5.34, size: 12 },
+];
+const EXAMPLE_LABELS = [];
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ════════════════════════════ i18n ════════════════════════════ */
@@ -502,6 +542,38 @@ function drawLabel(g, text, x, y, bold) {
 
 const segKey = (a, b) => `${a}-${b}`;
 
+function buildLabels(minX, minY, maxX, maxY, k) {
+  let src = MAP_LABELS;
+  if (!src.length) {
+    const rnd = mulberry32(99);
+    const cells = [0, 1, 2, 3, 4, 5, 6, 7, 8];          // 3x3 grid, one random spot per cell (keeps examples from overlapping)
+    for (let i = cells.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [cells[i], cells[j]] = [cells[j], cells[i]]; }
+    src = EXAMPLE_LABELS.map(([text, size], n) => ({
+      text, size,
+      x: minX + (((cells[n] % 3) + 0.2 + 0.6 * rnd()) / 3) * (maxX - minX),
+      y: minY + ((((cells[n] / 3) | 0) + 0.2 + 0.6 * rnd()) / 3) * (maxY - minY)
+    }));
+  }
+  return src.map((l) => ({ text: l.text, size: l.size || 16, lng: (l.x - minX) * k, lat: (l.y - minY) * k }));
+}
+
+function drawMapLabels(g, v, w, h) {
+  if (!S.labels || !S.labels.length) return;
+  const zf = Math.pow(2, (map.getZoom() - S.fitZoom) * 0.5);
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  for (const l of S.labels) {
+    const px = Math.min(96, l.size * zf);
+    if (px < 7) continue;
+    const x = v.ox + l.lng * v.s, y = v.oy - l.lat * v.s;
+    if (x < -300 || x > w + 300 || y < -100 || y > h + 100) continue;
+    const txt = typeof l.text === 'string' ? l.text : (l.text[lang] || l.text.en || '');
+    g.font = `600 ${px.toFixed(1)}px "Instrument Sans", system-ui, sans-serif`;
+    g.lineWidth = Math.max(2, px * 0.08); g.strokeStyle = 'rgba(10,16,28,0.75)'; g.strokeText(txt, x, y);
+    g.fillStyle = LABEL_COLOR; g.fillText(txt, x, y);
+  }
+  g.textAlign = 'start';
+}
+
 function drawTop() {
   const w = S.w, h = S.h, g = ctxT;
   g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
@@ -511,6 +583,8 @@ function drawTop() {
   const v = view();
   const X = (i) => v.ox + S.lng[i] * v.s, Y = (i) => v.oy - S.lat[i] * v.s;
   const chain = S.chain;
+
+  drawMapLabels(g, v, w, h);
 
   // Lines
   g.lineCap = 'round'; g.lineJoin = 'round';
@@ -736,6 +810,7 @@ function ingest(arr, { demo = false } = {}) {
     bounds: L.latLngBounds([0, 0], [(maxY - minY) * k, (maxX - minX) * k]),
     sel: [null, null, null, null], chain: [], hover: -1
   });
+  S.labels = buildLabels(minX, minY, maxX, maxY, k);
   S.hiDots.clear(); S.hiSegs.clear();
   spriteCache.clear();
   buildGrid();
@@ -1019,6 +1094,7 @@ function applyLang() {
   S.discs.forEach((d) => { paintLegendItem(d); d.el.b.lastChild.textContent = d.count.toLocaleString(lang); });
   if (S.n) renderStats();
   hideTip();
+  scheduleTop();
 }
 document.querySelectorAll('[data-lang-btn]').forEach((btn) => btn.addEventListener('click', () => {
   lang = btn.dataset.langBtn;
