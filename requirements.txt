@@ -1,0 +1,18 @@
+# Data Wrangling & Math
+pandas
+numpy
+
+# Machine Learning, NLP & Clustering
+scikit-learn
+umap-learn
+sentence-transformers
+nltk
+
+# Deep Learning & GPU Acceleration
+torch
+torch-directml
+
+# Web Requests & Visualization
+requests
+plotly
+tqdm
