@@ -170,52 +170,97 @@
     <!-- ───────── About view ───────── -->
     <section id="viewAbout" hidden class="absolute inset-0 overflow-y-auto scroll-thin bg-ink-950">
       <article class="md mx-auto max-w-[68ch] px-6 py-10 sm:py-14">
-
-        <div data-lang="en">
-          <h1>About this project</h1>
-          <p class="lead"><span class="ph">[Placeholder]</span> Replace this paragraph with a short statement of what the project is, who made it and why.</p>
-
+        
+<div data-lang="en">
           <h2>What you are looking at</h2>
-          <p>Each dot is one researcher. Its position comes from the <code>x</code> and <code>y</code> values in the dataset and its color shows the discipline. <span class="ph">[Placeholder: explain how the coordinates were computed and what distance on the map means.]</span></p>
+          <p>
+            Each dot represents a researcher. Its position on the map is determined by its <code>x</code> and <code>y</code> coordinates, while its color identifies its scientific discipline.
+          </p>
+          <p>
+            To compute these positions, the titles and abstracts of each researcher's publications were processed using Natural Language Processing (NLP) and Machine Learning techniques. The text was converted into multilingual semantic vectors and subsequently reduced to two dimensions using the UMAP algorithm.
+          </p>
+          <p>
+            <strong>Methodological considerations:</strong> Because this approach relies on statistical methods and semantic inference, a point's spatial position may not fully capture a researcher's exact domain, particularly in highly interdisciplinary profiles. Additionally, keywords were extracted using the TF-IDF (<em>Term Frequency-Inverse Document Frequency</em>) method, which prioritizes terms that are most distinctive to each author's corpus over generic academic terminology.
+          </p>
+          <p>
+            Data cleaning filters were applied during processing. Specifically, authors with only a single indexed abstract were excluded to ensure a statistically robust placement.
+          </p>
+          <p class="ph">
+            To view the full source code and technical specifications of the project, visit the repository at 
+            <a href="https://github.com/federicomina-1987/argentina-research-map" target="_blank" rel="noopener noreferrer">
+              https://github.com/federicomina-1987/argentina-research-map
+            </a>.
+          </p>
 
-          <h2>How to use the map</h2>
+          <h2>How to navigate the map</h2>
           <ul>
-            <li>Scroll or pinch to zoom, drag to pan.</li>
-            <li>Hover a dot (or tap it) to see the name and top keywords.</li>
-            <li>Search up to four names. Lines connect them in the order of the search bars, and the map frames all of them.</li>
-            <li>Click a line or a selected dot to highlight it.</li>
-            <li>Click a discipline in the legend to hide or show it.</li>
+            <li><strong>Navigation:</strong> Use the mouse wheel to zoom in or out; click and drag to pan across the network.</li>
+            <li><strong>Hover info:</strong> Hover over a point (or tap on mobile) to display the researcher's name and primary keywords.</li>
+            <li><strong>Researcher search:</strong> You can search for up to four names in the search panels. The map will draw lines connecting the selected researchers in search order and automatically frame the view.</li>
+            <li><strong>Highlighting:</strong> Click on a line or a selected node to highlight it relative to the rest of the map.</li>
+            <li><strong>Discipline filter:</strong> Click on any discipline in the side legend to show or hide its corresponding nodes.</li>
           </ul>
 
-          <h2>Data</h2>
-          <p><span class="ph">[Placeholder]</span> Data source, collection date, license, known limitations.</p>
+          <h2>Data source and privacy</h2>
+          <p>
+            The data was harvested from the CONICET Institutional Repository via its official interoperability channels (OAI-PMH). The original CONICET content is licensed under the <em>Creative Commons Attribution 2.5 Argentina License</em>.
+          </p>
+          <p>
+            Only researchers' names, reduced coordinates, and derived keyword sets are processed and displayed on this site; full publication texts and abstracts are neither distributed nor stored. If you wish to request the removal of your profile from this visualization, please reach out via the contact details provided below.
+          </p>
 
           <h2>Credits and contact</h2>
-          <p><span class="ph">[Placeholder]</span> Authors, institution, contact address, citation.</p>
+          <p>
+            <strong>Created by:</strong> Federico Mina (IDH, CONICET / UNC)<br>
+            <strong>Contact:</strong> federico.mina [at] unc.edu.ar
+          </p>
         </div>
 
-        <div data-lang="es" hidden>
-          <h1>Acerca de este proyecto</h1>
-          <p class="lead"><span class="ph">[Texto provisional]</span> Reemplaza este párrafo con una breve descripción del proyecto, quiénes lo hicieron y por qué.</p>
+        
+<div data-lang="es" hidden>
+  <h2>Qué estás viendo</h2>
+  <p>
+    Cada punto representa a un investigador. Su posición en el plano se determina a partir de las coordenadas <code>x</code> e <code>y</code>, mientras que su color identifica la disciplina científica a la que pertenece.
+  </p>
+  <p>
+    Para calcular las posiciones, se procesaron los títulos y resúmenes (abstracts) de las publicaciones de cada persona mediante técnicas de Procesamiento del Lenguaje Natural (NLP) y Aprendizaje Automático (Machine Learning). El texto se convirtió en vectores semánticos multilingües y posteriormente se redujo a dos dimensiones mediante el algoritmo UMAP.
+  </p>
+  <p>
+    <strong>Consideraciones metodológicas:</strong> Al basarse en métodos estadísticos e inferencia semántica, la posición espacial puede no reflejar con total precisión el área exacta de un investigador, en particular en perfiles marcadamente interdisciplinarios. Por su parte, las palabras clave se extrajeron con el método TF-IDF (<em>Term Frequency-Inverse Document Frequency</em>), el cual prioriza los términos más distintivos del corpus de cada autor por sobre términos genéricos.
+  </p>
+  <p>
+    Durante la etapa de depuración se aplicaron filtros de calidad. En particular, se excluyó a autores con un único abstract cargado para garantizar un posicionamiento estadísticamente más sólido.
+  </p>
+  <p class="ph">
+    Para consultar el código fuente completo y los detalles técnicos del proyecto, visita el repositorio en 
+    <a href="https://github.com/federicomina-1987/argentina-research-map" target="_blank" rel="noopener noreferrer">
+      https://github.com/federicomina-1987/argentina-research-map
+    </a>.
+  </p>
 
-          <h2>Qué estás viendo</h2>
-          <p>Cada punto es un investigador. Su posición proviene de los valores <code>x</code> e <code>y</code> del conjunto de datos y su color indica la disciplina. <span class="ph">[Texto provisional: explica cómo se calcularon las coordenadas y qué significa la distancia en el mapa.]</span></p>
+  <h2>Cómo navegar el mapa</h2>
+  <ul>
+    <li><strong>Navegación:</strong> Usa la rueda del mouse para acercar o alejar el zoom; haz clic y arrastra para desplazarte por la red.</li>
+    <li><strong>Información al pasar el cursor:</strong> Pasa el cursor sobre un punto (o tócalo en dispositivos móviles) para desplegar el nombre del investigador y sus palabras clave principales.</li>
+    <li><strong>Búsqueda de investigadores:</strong> Puedes buscar hasta cuatro nombres en los paneles de búsqueda. El mapa conectará a los investigadores seleccionados con líneas siguiendo el orden de búsqueda y encuadrará la vista automáticamente.</li>
+    <li><strong>Resaltado:</strong> Haz clic en una línea o en un nodo seleccionado para destacarlo sobre el resto.</li>
+    <li><strong>Filtro por disciplina:</strong> Haz clic en cualquier disciplina dentro de la leyenda lateral para mostrar u ocultar sus nodos.</li>
+  </ul>
 
-          <h2>Cómo usar el mapa</h2>
-          <ul>
-            <li>Usa la rueda o pellizca para acercar; arrastra para desplazarte.</li>
-            <li>Pasa el cursor sobre un punto (o tócalo) para ver el nombre y las palabras clave.</li>
-            <li>Busca hasta cuatro nombres. Las líneas los unen en el orden de las barras de búsqueda y el mapa encuadra a todos.</li>
-            <li>Haz clic en una línea o en un punto seleccionado para resaltarlo.</li>
-            <li>Haz clic en una disciplina de la leyenda para ocultarla o mostrarla.</li>
-          </ul>
+  <h2>Origen de los datos y privacidad</h2>
+  <p>
+    Los datos fueron recopilados desde el Repositorio Institucional del CONICET a través de sus canales oficiales de interoperabilidad (OAI-PMH). Los contenidos originales del CONICET se encuentran bajo la licencia <em>Creative Commons Reconocimiento 2.5 Argentina License</em>.
+  </p>
+  <p>
+    En este sitio únicamente se procesan y publican los nombres de los investigadores, sus coordenadas reducidas y la selección de palabras clave derivadas; no se distribuyen ni almacenan los textos completos de los trabajos. Si deseas solicitar la remoción de tu perfil en esta visualización, puedes hacerlo mediante los canales de contacto.
+  </p>
 
-          <h2>Datos</h2>
-          <p><span class="ph">[Texto provisional]</span> Fuente de los datos, fecha de recolección, licencia, limitaciones conocidas.</p>
-
-          <h2>Créditos y contacto</h2>
-          <p><span class="ph">[Texto provisional]</span> Autores, institución, dirección de contacto, cómo citar.</p>
-        </div>
+  <h2>Créditos y contacto</h2>
+  <p>
+    <strong>Desarrollado por:</strong> Federico Mina (IDH, CONICET / UNC)<br>
+    <strong>Contacto:</strong> federico.mina [arroba] unc.edu.ar
+  </p>
+</div>
 
       </article>
     </section>
