@@ -10,7 +10,7 @@ All the original information has a Creative Commons license, I decided not to up
 
 Explore the semantic map of researchers here:
 
-👉 **[View the Interactive HTML Visualization](https://www.google.com/search?q=https://your-github-pages-url.github.io/mapa_interactivo.html&utm_source=gemini)** *(Link to be updated)*
+👉 **[View the Interactive HTML Visualization]([https://federicomina-1987.github.io/argentina-research-map/)** 
 
 The visualization is built using Plotly/Bokeh and allows users to explore the 2D semantic space. Each point represents an individual researcher.
 
