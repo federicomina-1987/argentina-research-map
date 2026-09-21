@@ -23,6 +23,7 @@ conicet-semantic-map/
 │
 ├── README.md
 ├── requirements.txt
+├── .gitignore
 │
 ├── notebooks/
 │   ├── 00-minado-API.ipynb
@@ -30,9 +31,8 @@ conicet-semantic-map/
 │   └── 02-Splitting-and-UMAP.ipynb
 │
 ├── data/ 
-│   └── processed/
-│       ├── investigadores_clusters.csv
-│       └── investigadores_clusters.json
+│   ├── investigadores_clusters.csv
+│   └── investigadores_clusters.json
 │
 └── docs/
     ├── index.html
