@@ -20,6 +20,25 @@ The visualization is built using Plotly/Bokeh and allows users to explore the 2D
 
 ---
 
+conicet-semantic-map/
+│
+├── README.md
+├── requirements.txt
+│
+├── notebooks/
+│   ├── 00-minado-API.ipynb
+│   ├── 01-Analisis-emb.ipynb
+│   └── 02-Splitting-and-UMAP.ipynb
+│
+├── data/ 
+│   └── processed/
+│       ├── investigadores_clusters.csv
+│       └── investigadores_clusters.json
+│
+└── docs/
+    ├── index.html
+
+
 ## 🏗️ Pipeline Architecture
 
 The project is structured into three sequential Jupyter Notebooks, followed by the visualization rendering.
