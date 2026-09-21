@@ -4,6 +4,8 @@ This repository contains an end-to-end Natural Language Processing (NLP) and Mac
 
 By extracting metadata from the official repository, generating multilingual semantic embeddings, and applying advanced dimensionality reduction, this project maps researchers into distinct scientific disciplines based purely on the semantic content of their published work.
 
+All the original information has a Creative Commons license, I decided not to upload the paper names, abstracts, filiation or other information to this repository.
+
 ## 🗺️ Interactive Visualization
 
 Explore the semantic map of researchers here:
