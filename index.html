@@ -173,7 +173,7 @@
 
         
 <div data-lang="en">
-          <h2>What you are looking at</h2>
+          <h2>What you are seeing</h2>
           <p>
             Each dot represents a researcher. Its position on the map is determined by its <code>x</code> and <code>y</code> coordinates, while its color identifies its scientific discipline.
           </p>
@@ -181,10 +181,10 @@
             To compute these positions, the titles and abstracts of each researcher's publications were processed using Natural Language Processing (NLP) and Machine Learning techniques. The text was converted into multilingual semantic vectors and subsequently reduced to two dimensions using the UMAP algorithm.
           </p>
           <p>
-            <strong>Methodological considerations:</strong> Because this approach relies on statistical methods and semantic inference, a point's spatial position may not fully capture a researcher's exact domain, particularly in highly interdisciplinary profiles. Additionally, keywords were extracted using the TF-IDF (<em>Term Frequency-Inverse Document Frequency</em>) method, which prioritizes terms that are most distinctive to each author's corpus over generic academic terminology.
+            <strong>Methodological considerations:</strong> Because this approach relies on statistical methods and semantic inference, a dot's spatial position may not fully capture a researcher's exact domain, particularly in highly interdisciplinary profiles. Additionally, keywords were extracted using the TF-IDF (<em>Term Frequency-Inverse Document Frequency</em>) method, which prioritizes terms that are most distinctive to each author's corpus over generic academic terminology.
           </p>
           <p>
-            Data cleaning filters were applied during processing. Specifically, authors with only a single indexed abstract were excluded to ensure a statistically robust placement.
+            To ensure a statistically robust result, only authors with 2 abstract or more were included.
           </p>
           <p class="ph">
             To view the full source code and technical specifications of the project, visit the repository at 
@@ -196,7 +196,7 @@
           <h2>How to navigate the map</h2>
           <ul>
             <li><strong>Navigation:</strong> Use the mouse wheel to zoom in or out; click and drag to pan across the network.</li>
-            <li><strong>Hover info:</strong> Hover over a point (or tap on mobile) to display the researcher's name and primary keywords.</li>
+            <li><strong>Hover info:</strong> Hover over a dot (or tap on mobile) to display the researcher's name and primary keywords.</li>
             <li><strong>Researcher search:</strong> You can search for up to four names in the search panels. The map will draw lines connecting the selected researchers in search order and automatically frame the view.</li>
             <li><strong>Highlighting:</strong> Click on a line or a selected node to highlight it relative to the rest of the map.</li>
             <li><strong>Discipline filter:</strong> Click on any discipline in the side legend to show or hide its corresponding nodes.</li>
@@ -207,7 +207,7 @@
             The data was harvested from the CONICET Institutional Repository via its official interoperability channels (OAI-PMH). The original CONICET content is licensed under the <em>Creative Commons Attribution 2.5 Argentina License</em>.
           </p>
           <p>
-            Only researchers' names, reduced coordinates, and derived keyword sets are processed and displayed on this site; full publication texts and abstracts are neither distributed nor stored. If you wish to request the removal of your profile from this visualization, please reach out via the contact details provided below.
+            Only researchers' names, reduced coordinates, and derived keyword sets are processed and displayed on this site; full publication texts and abstracts are neither distributed nor stored. If you would like to be removed from the list, please contact the email address below.
           </p>
 
           <h2>Credits and contact</h2>
